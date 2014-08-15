@@ -1,0 +1,2 @@
+serviceClass: com.indidge.mywebapp.client.GreetingService
+path: 8A4786F46CB7E1B522C3628DAEBA5354.gwt.rpc
