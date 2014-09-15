@@ -7,9 +7,12 @@ import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.event.dom.client.KeyUpEvent;
 import com.google.gwt.event.dom.client.KeyUpHandler;
+import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.rpc.AsyncCallback;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.DialogBox;
+import com.google.gwt.user.client.ui.FormPanel;
+import com.google.gwt.user.client.ui.FormPanel.SubmitCompleteEvent;
 import com.google.gwt.user.client.ui.HTML;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.PasswordTextBox;
@@ -40,30 +43,55 @@ public class MyWebApp implements EntryPoint {
 	 * This is the entry point method.
 	 */
 	public void onModuleLoad() {
-		final Button sendButton = new Button("Login");
+		
+		final FormPanel form = new FormPanel();
+	    form.setAction("/authenticationFrom");
+	    form.setMethod(FormPanel.METHOD_POST);
+	    
+	    VerticalPanel panel = new VerticalPanel();
+	    form.setWidget(panel);
+		
+	    final Label userNameErrorLabel = new Label();
+		final Label passwordErrorLabel = new Label();
+		
+		
 		final TextBox nameField = new TextBox();
 		nameField.getElement().setPropertyString("placeholder", "User Name");
+		nameField.setWidth("300px");
+	
+		panel.add(nameField);
+		panel.add(new HTML("</br>"));
+		panel.add(userNameErrorLabel);
 		 final PasswordTextBox passwordField = new PasswordTextBox();
 		passwordField.getElement().setPropertyString("placeholder","Password");
-		final Label userNameErrorLabel = new Label();
-		final Label passwordErrorLabel = new Label();
-
-		// We can add style names to widgets
-		sendButton.addStyleName("sendButton");
-
-		// Add the nameField and sendButton to the RootPanel
-		// Use RootPanel.get() to get the entire body element
-		RootPanel.get("nameFieldContainer").add(nameField);
-		RootPanel.get("errorLabelContainer").add(userNameErrorLabel);
-		RootPanel.get("nameFieldContainer").add(passwordField);
-		RootPanel.get("errorLabelContainer").add(passwordErrorLabel);
-		RootPanel.get("sendButtonContainer").add(sendButton);
+		passwordField.setWidth("300px");
+		panel.add(passwordField);
+		panel.add(passwordErrorLabel);
 		
-
-		// Focus the cursor on the name field when the app loads
-		nameField.setFocus(true);
-		nameField.selectAll();
-
+		panel.add(new HTML("</br>"));
+		
+		final Button sendButton = new Button("Login" ,new ClickHandler() {
+		      public void onClick(ClickEvent event) {
+		    	  userNameErrorLabel.setText("");
+					if (!FieldVerifier.isValidName( nameField.getText())) {
+						passwordErrorLabel.setText("");
+						userNameErrorLabel.setText("Please Enter UserName");
+						return;
+					}
+						if (!FieldVerifier.isValidName(passwordField.getText())) {
+							userNameErrorLabel.setText("");
+							passwordErrorLabel.setText("Please Enter Password");
+							return;
+						}
+					
+		        form.submit();
+		      }
+		    });
+		// We can add style names to widgets
+		sendButton.addStyleName("width-35 pull-right btn btn-sm btn-primary");
+		panel.add(sendButton);
+		
+		
 		// Create the popup dialog box
 		final DialogBox dialogBox = new DialogBox();
 		dialogBox.setText("Remote Procedure Call");
@@ -91,55 +119,32 @@ public class MyWebApp implements EntryPoint {
 				sendButton.setFocus(true);
 			}
 		});
+ 
+		
+		
 
-		// Create a handler for the sendButton and nameField
-		class MyHandler implements ClickHandler, KeyUpHandler {
-			/**
-			 * Fired when the user clicks on the sendButton.
-			 */
-			public void onClick(ClickEvent event) {
-				sendNameToServer();
-			}
+		// Add the nameField and sendButton to the RootPanel
+		// Use RootPanel.get() to get the entire body element
+	
+		RootPanel.get("loginForm").add(panel);
+		RootPanel.get("errorLabelContainer").add(userNameErrorLabel);
+		RootPanel.get("errorLabelContainer").add(passwordErrorLabel);
+		
 
-			/**
-			 * Fired when the user types in the nameField.
-			 */
-			public void onKeyUp(KeyUpEvent event) {
-				if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
-					sendNameToServer();
-				}
-			}
-
-			/**
-			 * Send the name from the nameField to the server and wait for a response.
-			 */
-			private void sendNameToServer() {
-				// First, we validate the input.
-				userNameErrorLabel.setText("");
-				String nameToServer = nameField.getText();
-				if (!FieldVerifier.isValidName(nameToServer)) {
-					passwordErrorLabel.setText("");
-					userNameErrorLabel.setText("Please Enter UserName");
-					return;
-				}
-				String passwordToServer = passwordField.getValue();
-				passwordErrorLabel.setText("");
-				if (!FieldVerifier.isValidName(passwordToServer)) {
-					userNameErrorLabel.setText("");
-					passwordErrorLabel.setText("Please Enter Password");
-					return;
-				}
-
-				// Then, we send the input to the server.
-				sendButton.setEnabled(false);
-				textToServerLabel.setText(nameToServer);
-				serverResponseLabel.setText("");
-				greetingService.greetServer(nameToServer,passwordToServer, 
+		// Focus the cursor on the name field when the app loads
+		nameField.setFocus(true);
+		nameField.selectAll();
+		
+		
+		 form.addSubmitCompleteHandler(new FormPanel.SubmitCompleteHandler() {
+			@Override
+			public void onSubmitComplete(SubmitCompleteEvent event) {
+				
+				greetingService.greetServer(nameField.getText(),passwordField.getText(), 
 						new AsyncCallback<String>() {
 							public void onFailure(Throwable caught) {
 								// Show the RPC error message to the user
-								dialogBox
-										.setText("Remote Procedure Call - Failure");
+								dialogBox.setText("Remote Procedure Call - Failure");
 								serverResponseLabel
 										.addStyleName("serverResponseLabelError");
 								serverResponseLabel.setHTML(SERVER_ERROR);
@@ -149,19 +154,23 @@ public class MyWebApp implements EntryPoint {
 
 							public void onSuccess(String result) {
 								dialogBox.setText("Remote Procedure Call");
-								serverResponseLabel
-										.removeStyleName("serverResponseLabelError");
+								serverResponseLabel.removeStyleName("serverResponseLabelError");
 								serverResponseLabel.setHTML(result);
 								dialogBox.center();
 								closeButton.setFocus(true);
 							}
 						});
 			}
-		}
-
-		// Add a handler to send the name to the server
-		MyHandler handler = new MyHandler();
-		sendButton.addClickHandler(handler);
-		nameField.addKeyUpHandler(handler);
+		    });
+		 
+		 
+		 /**
+			 * Send the name from the nameField to the server and wait for a response.
+			 */
+		 
+		// Add a handler to close the DialogBox
+		
 	}
+	
+	
 }
